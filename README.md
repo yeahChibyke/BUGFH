@@ -30,7 +30,7 @@ After the swap completes, `afterSwap` records the transaction gas price into a s
 
 ```text
 src/BtcUsdcGasPriceFeeHook.sol   Hook implementation
-test/TestBUGPFH.t.sol            Mainnet-fork tests
+test/TestBUGPFH.t.sol            Unit and mainnet-fork tests
 foundry.toml                     Foundry configuration
 remappings.txt                   Dependency remappings
 ```
@@ -43,7 +43,18 @@ forge build
 
 ## Test
 
-The test suite is written as a mainnet-fork test. Set `RPC_URL` to an Ethereum mainnet RPC endpoint:
+The suite is split into two contracts in `test/TestBUGPFH.t.sol`:
+
+- `BtcUsdcGasPriceFeeHookUnitTest` — fork-free tests for construction, currency sorting, hook permissions, and input validation. These never read pool state, so they run without an RPC endpoint.
+- `BtcUsdcGasPriceFeeHookForkTest` — mainnet-fork tests for the fee override and moving-average behavior against a real `PoolManager`.
+
+The unit tests run standalone:
+
+```sh
+forge test --match-contract BtcUsdcGasPriceFeeHookUnitTest
+```
+
+The fork tests need `RPC_URL` set to an Ethereum mainnet RPC endpoint:
 
 ```sh
 RPC_URL="https://..." forge test
@@ -55,10 +66,10 @@ To pin the fork for repeatable results, also set `FORK_BLOCK_NUMBER`:
 RPC_URL="https://..." FORK_BLOCK_NUMBER=12345678 forge test
 ```
 
-The fork test does two separate things:
+The fork tests do two separate things:
 
-1. Reads the existing mainnet WBTC/USDC Uniswap v4 pool to verify the forked `PoolManager` state is accessible.
-2. Initializes a new fork-local WBTC/USDC dynamic-fee pool with this hook attached, then verifies the per-swap fee override and moving-average updates.
+1. Read the existing mainnet WBTC/USDC Uniswap v4 pool to verify the forked `PoolManager` state is accessible.
+2. Initialize a new fork-local WBTC/USDC dynamic-fee pool with this hook attached, then verify the per-swap fee override (decoded from the emitted `Swap` event) and the moving-average updates.
 
 The second pool is necessary because an already-initialized Uniswap v4 pool cannot have a hook added later.
 
